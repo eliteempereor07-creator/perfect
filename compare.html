@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Processor Comparison — ProcBench</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Sora',sans-serif;background:#0a0f1e;color:#e2e8f0;min-height:100vh;}
+
+.top-nav{display:flex;justify-content:space-between;align-items:center;padding:14px 30px;background:#111827;border-bottom:1px solid #1e293b;}
+.nav-buttons{display:flex;gap:12px;}
+.nav-btn{text-decoration:none;padding:8px 16px;border-radius:6px;background:#38bdf8;color:#0a0f1e;font-weight:700;font-size:14px;transition:.2s;}
+.nav-btn:hover{background:#0ea5e9;}
+.logo{font-family:'Space Mono',monospace;color:#38bdf8;font-size:14px;}
+
+.container{width:90%;max-width:1100px;margin:0 auto;padding:40px 0 60px;}
+h1{font-family:'Space Mono',monospace;text-align:center;font-size:clamp(20px,3.5vw,32px);color:#38bdf8;margin-bottom:6px;}
+.subtitle{text-align:center;color:#94a3b8;font-size:14px;margin-bottom:40px;}
+
+.comparison-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:24px;align-items:start;margin-bottom:30px;}
+@media(max-width:700px){.comparison-grid{grid-template-columns:1fr;}}
+
+.chip-card{background:#111827;border-radius:14px;padding:28px;border:1px solid #1e293b;transition:.3s;}
+.chip-card.winner-card{border-color:#38bdf8;box-shadow:0 0 24px rgba(56,189,248,.15);}
+
+.card-name{font-family:'Space Mono',monospace;font-size:clamp(14px,2vw,18px);font-weight:700;margin-bottom:6px;color:#f1f5f9;word-break:break-word;}
+.card-company{font-size:12px;color:#64748b;margin-bottom:20px;}
+
+.stat{margin-bottom:18px;}
+.stat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.stat-label{font-size:12px;font-weight:600;color:#94a3b8;letter-spacing:.06em;text-transform:uppercase;}
+.stat-value{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:#f1f5f9;}
+.stat-value.best{color:#38bdf8;}
+
+.score-bar{background:#1e293b;height:10px;border-radius:5px;overflow:hidden;}
+.score-fill{height:100%;border-radius:5px;transition:width .6s ease;background:#38bdf8;}
+
+.vs-divider{display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:#334155;padding-top:80px;}
+@media(max-width:700px){.vs-divider{padding-top:0;}}
+
+.winner-banner{text-align:center;padding:20px;border-radius:12px;font-family:'Space Mono',monospace;font-size:18px;font-weight:700;margin-bottom:30px;background:#0f2744;border:1px solid #1e3a5f;color:#38bdf8;}
+.winner-banner.tie{background:#1a1a0f;border-color:#3d3522;color:#fbbf24;}
+.winner-banner.error{background:#1a0f0f;border-color:#3d2222;color:#f87171;}
+
+.pros-section{background:#111827;border-radius:14px;padding:28px;border:1px solid #1e293b;margin-bottom:30px;}
+.pros-section h2{font-family:'Space Mono',monospace;font-size:16px;color:#38bdf8;margin-bottom:20px;}
+.pros-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:600px){.pros-grid{grid-template-columns:1fr;}}
+.pros-col h3{font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+.pro-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:14px;}
+.pro-dot{width:6px;height:6px;border-radius:50%;background:#38bdf8;flex-shrink:0;margin-top:5px;}
+
+.specs-section{background:#111827;border-radius:14px;padding:28px;border:1px solid #1e293b;}
+.specs-section h2{font-family:'Space Mono',monospace;font-size:16px;color:#38bdf8;margin-bottom:20px;}
+.spec-row{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #1e293b;font-size:14px;}
+.spec-row:last-child{border-bottom:none;}
+.spec-label{flex:1;color:#64748b;font-weight:600;}
+.spec-val1,.spec-val2{width:160px;text-align:center;font-family:'Space Mono',monospace;font-size:13px;}
+.spec-val1.best,.spec-val2.best{color:#38bdf8;font-weight:700;}
+
+.loading-state{text-align:center;padding:80px 20px;color:#94a3b8;}
+.not-found{text-align:center;padding:80px 20px;color:#475569;}
+.not-found h2{color:#64748b;margin-bottom:12px;}
+.back-link{display:inline-block;margin-top:20px;padding:12px 28px;background:#38bdf8;color:#0a0f1e;border-radius:8px;text-decoration:none;font-weight:700;}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="nav-buttons">
+    <a href="index.html" class="nav-btn">← Back</a>
+    <a href="ranks.html" class="nav-btn">Rankings</a>
+  </div>
+  <span class="logo">📱 ProcBench</span>
+</nav>
+
+<div class="container">
+  <div id="main-content">
+    <div class="loading-state">⏳ Loading processor data...</div>
+  </div>
+</div>
+
+<script src="db.js"></script>
+<script>
+function renderComparison() {
+  const params = new URLSearchParams(window.location.search);
+  const p1name = params.get('proc1');
+  const p2name = params.get('proc2');
+  const p1 = processorMap[p1name];
+  const p2 = processorMap[p2name];
+  const main = document.getElementById('main-content');
+
+  if (!p1name || !p2name) {
+    main.innerHTML = `<div class="not-found"><h2>No processors selected</h2><p>Go back and choose two processors to compare.</p><a class="back-link" href="index.html">← Back to Home</a></div>`;
+    return;
+  }
+  if (!p1 || !p2) {
+    const missing = !p1 ? p1name : p2name;
+    main.innerHTML = `<div class="not-found"><h2>"${missing}" not found</h2><p>This processor may not be in the database.</p><a class="back-link" href="index.html">← Back to Home</a></div>`;
+    return;
+  }
+
+  const cats = ['cpu','gpu','battery','nanoScore'];
+  const best = {};
+  cats.forEach(c => {
+    if (p1[c] > p2[c]) best[c] = 'p1';
+    else if (p2[c] > p1[c]) best[c] = 'p2';
+    else best[c] = 'tie';
+  });
+
+  let winnerHTML = '';
+  if (p1.nanoScore > p2.nanoScore)      winnerHTML = `<div class="winner-banner">🏆 ${p1name} wins overall!</div>`;
+  else if (p2.nanoScore > p1.nanoScore) winnerHTML = `<div class="winner-banner">🏆 ${p2name} wins overall!</div>`;
+  else                                   winnerHTML = `<div class="winner-banner tie">⚖️ It's a tie — equal NanoScore</div>`;
+
+  function bar(proc, cat) {
+    const val    = proc[cat];
+    const isBest = best[cat] === (proc === p1 ? 'p1' : 'p2');
+    const labels = { cpu:'CPU', gpu:'GPU', battery:'Battery', nanoScore:'NanoScore' };
+    return `
+      <div class="stat">
+        <div class="stat-header">
+          <span class="stat-label">${labels[cat]}</span>
+          <span class="stat-value${isBest?' best':''}">${val}</span>
+        </div>
+        <div class="score-bar"><div class="score-fill" style="width:${val}%;background:${isBest?'#38bdf8':'#334155'}"></div></div>
+      </div>`;
+  }
+
+  function prosHTML(proc) {
+    const list = Array.isArray(proc.pros) ? proc.pros : [];
+    if (!list.length) return '<div class="pro-item"><div class="pro-dot"></div><span>No data available</span></div>';
+    return list.map(p => `<div class="pro-item"><div class="pro-dot"></div><span>${p}</span></div>`).join('');
+  }
+
+  function specRow(label, v1, v2) {
+    const b1 = (typeof v1==='number' && typeof v2==='number') ? (v1>v2?'best':'') : '';
+    const b2 = (typeof v1==='number' && typeof v2==='number') ? (v2>v1?'best':'') : '';
+    return `<div class="spec-row">
+      <span class="spec-label">${label}</span>
+      <span class="spec-val1 ${b1}">${v1}</span>
+      <span class="spec-val2 ${b2}">${v2}</span>
+    </div>`;
+  }
+
+  main.innerHTML = `
+    <h1>${p1name} vs ${p2name}</h1>
+    <p class="subtitle">Side-by-side processor comparison</p>
+
+    <div class="comparison-grid">
+      <div class="chip-card${p1.nanoScore > p2.nanoScore ? ' winner-card' : ''}">
+        <div class="card-name">${p1name}</div>
+        <div class="card-company">${p1.company} · ${p1.process||'N/A'}</div>
+        ${bar(p1,'cpu')}${bar(p1,'gpu')}${bar(p1,'battery')}${bar(p1,'nanoScore')}
+      </div>
+      <div class="vs-divider">VS</div>
+      <div class="chip-card${p2.nanoScore > p1.nanoScore ? ' winner-card' : ''}">
+        <div class="card-name">${p2name}</div>
+        <div class="card-company">${p2.company} · ${p2.process||'N/A'}</div>
+        ${bar(p2,'cpu')}${bar(p2,'gpu')}${bar(p2,'battery')}${bar(p2,'nanoScore')}
+      </div>
+    </div>
+
+    ${winnerHTML}
+
+    <div class="pros-section">
+      <h2>Key Strengths</h2>
+      <div class="pros-grid">
+        <div><h3>${p1name}</h3>${prosHTML(p1)}</div>
+        <div><h3>${p2name}</h3>${prosHTML(p2)}</div>
+      </div>
+    </div>
+
+    <div class="specs-section">
+      <h2>Detailed Specs</h2>
+      <div class="spec-row" style="border-bottom:1px solid #1e293b;padding-bottom:10px;margin-bottom:4px;">
+        <span class="spec-label" style="color:#64748b">Specification</span>
+        <span class="spec-val1" style="font-weight:700;color:#94a3b8;font-family:'Sora',sans-serif;font-size:12px;">${p1name.length>20?p1name.substring(0,18)+'…':p1name}</span>
+        <span class="spec-val2" style="font-weight:700;color:#94a3b8;font-family:'Sora',sans-serif;font-size:12px;">${p2name.length>20?p2name.substring(0,18)+'…':p2name}</span>
+      </div>
+      ${specRow('Manufacturer', p1.company, p2.company)}
+      ${specRow('Process Node', p1.process||'N/A', p2.process||'N/A')}
+      ${specRow('CPU Score', p1.cpu, p2.cpu)}
+      ${specRow('GPU Score', p1.gpu, p2.gpu)}
+      ${specRow('Battery Score', p1.battery, p2.battery)}
+      ${specRow('NanoScore', p1.nanoScore, p2.nanoScore)}
+      ${specRow('AnTuTu (approx)', (p1.antutu||0).toLocaleString(), (p2.antutu||0).toLocaleString())}
+      ${specRow('Global Rank', '#'+p1.rank, '#'+p2.rank)}
+    </div>
+  `;
+}
+
+document.addEventListener('dbReady', renderComparison);
+document.addEventListener('dbError', () => {
+  document.getElementById('main-content').innerHTML =
+    `<div class="not-found"><h2>❌ Database Error</h2><p>Could not load processor data. Is Flask running?</p><a class="back-link" href="index.html">← Back to Home</a></div>`;
+});
+</script>
+</body>
+</html>

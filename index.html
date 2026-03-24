@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ProcBench — Mobile Processor Comparison</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@400;600;700&display=swap');
+    body{font-family:'Sora',sans-serif!important;}
+    .header-content h1{font-family:'Space Mono',monospace;}
+    select optgroup{font-weight:700;color:#94a3b8;}
+    .loading{text-align:center;padding:40px;color:#94a3b8;font-size:15px;}
+    .error-msg{text-align:center;padding:40px;color:#f87171;font-size:15px;}
+    </style>
+</head>
+
+<body>
+<header class="top-nav">
+    <div class="nav-buttons">
+        <a href="ranks.html" class="nav-btn">Rankings</a>
+        <a href="about.html" class="nav-btn">About</a>
+    </div>
+    <div class="header-content">
+        <h1>ProcBench</h1>
+        <p>Compare and find the best mobile processor</p>
+    </div>
+</header>
+
+<section class="container">
+
+    <h2>Compare Processors</h2>
+    <div class="compare-box">
+        <select id="proc1"><option value="">Loading...</option></select>
+        <select id="proc2"><option value="">Loading...</option></select>
+        <button id="compareBtn">Compare →</button>
+    </div>
+
+    <div id="result" class="result-box"></div>
+
+    <h2>Top 10 Best Mobile Processors</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Processor</th>
+                    <th>Company</th>
+                    <th>CPU</th>
+                    <th>GPU</th>
+                    <th>Battery</th>
+                    <th>NanoScore</th>
+                </tr>
+            </thead>
+            <tbody id="topTable"><tr><td colspan="7" class="loading">⏳ Loading processors from database...</td></tr></tbody>
+        </table>
+    </div>
+</section>
+
+<footer><p>© 2026 ProcBench — Mobile Processor Comparison</p></footer>
+
+<script src="db.js"></script>
+<script>
+const companies = ['Apple','Qualcomm','MediaTek','Samsung','Google','Huawei'];
+
+function buildSelect(selectId) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = '<option value="">Select Processor</option>';
+  companies.forEach(company => {
+    const procs = processorDB.filter(p => p.company === company)
+                             .sort((a, b) => b.nanoScore - a.nanoScore);
+    if (!procs.length) return;
+    const grp = document.createElement('optgroup');
+    grp.label = company;
+    procs.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      opt.textContent = p.name;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+}
+
+function buildTopTable() {
+  const top10 = rankedProcessors.slice(0, 10);
+  document.getElementById('topTable').innerHTML = top10.map((p, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.company}</td>
+      <td>${p.cpu}</td>
+      <td>${p.gpu}</td>
+      <td>${p.battery}</td>
+      <td style="font-weight:700;color:#38bdf8">${p.nanoScore}</td>
+    </tr>`).join('');
+}
+
+// ── Wait for DB then render ───────────────────────────────────
+document.addEventListener('dbReady', () => {
+  buildSelect('proc1');
+  buildSelect('proc2');
+  buildTopTable();
+});
+
+document.addEventListener('dbError', () => {
+  document.getElementById('topTable').innerHTML =
+    '<tr><td colspan="7" class="error-msg">❌ Could not connect to database. Is Flask running?</td></tr>';
+});
+
+document.getElementById('compareBtn').addEventListener('click', () => {
+  const p1 = document.getElementById('proc1').value;
+  const p2 = document.getElementById('proc2').value;
+  if (!p1 || !p2) { alert('Please select both processors'); return; }
+  if (p1 === p2)  { alert('Please select two different processors'); return; }
+  window.location.href = `compare.html?proc1=${encodeURIComponent(p1)}&proc2=${encodeURIComponent(p2)}`;
+});
+</script>
+</body>
+</html>
